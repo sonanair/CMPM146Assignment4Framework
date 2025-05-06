@@ -7,14 +7,13 @@ public class BehaviorTree
 
     public EnemyController agent;
 
+    public BehaviorTree() { }
+
     public virtual Result Run()
     {
+        // Log a warning to help debug unimplemented Run methods
+        Debug.LogWarning($"[BehaviorTree] Run() called on base class for {this.GetType().Name}. Returning SUCCESS by default.");
         return Result.SUCCESS;
-    }
-
-    public BehaviorTree()
-    {
-
     }
 
     public void SetAgent(EnemyController agent)
@@ -29,6 +28,7 @@ public class BehaviorTree
 
     public virtual BehaviorTree Copy()
     {
+        Debug.LogWarning($"[BehaviorTree] Copy() not implemented for {this.GetType().Name}");
         return null;
     }
 }
