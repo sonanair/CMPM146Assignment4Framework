@@ -6,28 +6,28 @@ public class Selector : InteriorNode
 
     public override Result Run()
     {
-        if (current_child >= children.Count)
+        while (current_child < children.Count)
         {
-            current_child = 0;
-            return Result.FAILURE;
+            Result res = children[current_child].Run();
+
+            if (res == Result.SUCCESS)
+            {
+                current_child = 0;
+                return Result.SUCCESS;
+            }
+
+            if (res == Result.IN_PROGRESS)
+            {
+                return Result.IN_PROGRESS;
+            }
+
+            // On FAILURE, move to next child
+            current_child++;
         }
 
-        Result res = children[current_child].Run();
-
-        if (res == Result.SUCCESS)
-        {
-            current_child = 0;
-            return Result.SUCCESS;
-        }
-
-        if (res == Result.IN_PROGRESS)
-        {
-            return Result.IN_PROGRESS;
-        }
-
-        // Otherwise it failed; move to next child
-        current_child++;
-        return Result.IN_PROGRESS;
+        // All children failed
+        current_child = 0;
+        return Result.FAILURE;
     }
 
     public override BehaviorTree Copy()

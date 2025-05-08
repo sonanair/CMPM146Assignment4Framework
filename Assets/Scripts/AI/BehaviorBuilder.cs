@@ -9,56 +9,74 @@ public class BehaviorBuilder
         if (agent.monster == "warlock")
         {
             result = new Selector(new BehaviorTree[] {
-                // Heal lowest health ally if possible
+                // Baiting: Step toward player to draw fire if few allies around
                 new Sequence(new BehaviorTree[] {
-                    new AbilityReadyQuery("heal"),
-                    new NearbyEnemiesQuery(1, 5.0f), // count = 1, range = 5 units
-                    new Heal()
+                    new PlayerIsFarQuery(5.0f),
+                    new NotSurroundedQuery(3, 5.0f),
+                    new GoTowards(GameManager.Instance.player.transform, 1.5f, 1.0f)
                 }),
 
-                // Apply permanent buff to strong ally
-                new Sequence(new BehaviorTree[] {
-                    new AbilityReadyQuery("permabuff"),
-                    new StrengthFactorQuery(1.5f),
-                    new PermaBuff()
-                }),
 
-                // Apply temporary buff if stronger enemies are around
+                // Standard support behavior
                 new Sequence(new BehaviorTree[] {
                     new AbilityReadyQuery("buff"),
                     new StrengthFactorQuery(1.0f),
                     new Buff()
                 }),
 
-                // Support fallback: stay at support waypoint (index 1)
-                new GoTo(AIWaypointManager.Instance.Get(1).transform, 1.0f)
+                new Sequence(new BehaviorTree[] {
+                    new MoveToPlayer(agent.GetAction("attack").range),
+                    new AbilityReadyQuery("attack"),  // optional, but helpful
+                    new Attack()
+                })
             });
         }
         else if (agent.monster == "zombie")
         {
+            var groupPoint = AIWaypointManager.Instance
+                            .GetClosestByType(agent.transform.position, AIWaypoint.Type.FORWARD)
+                            .transform;
+
             result = new Selector(new BehaviorTree[] {
-                // If group size is big enough, move to player and attack
+                // 1) Retreat if very low on HP
                 new Sequence(new BehaviorTree[] {
-                    new NearbyEnemiesQuery(4, 5.0f), // count = 4, radius = 5 units
+                    new LowHPQuery(15.0f),
+                    new GoTo(
+                    AIWaypointManager.Instance.GetClosestByType(agent.transform.position, AIWaypoint.Type.SAFE)
+                                    .transform,
+                    1.0f
+                    )
+                }),
+
+                // 2) Charge the player when enough allies are around
+                new Sequence(new BehaviorTree[] {
+                    new NearbyEnemiesQuery(3, 6.0f),           // lowered count, larger radius
                     new MoveToPlayer(agent.GetAction("attack").range),
                     new Attack()
                 }),
 
-                // Else group at a waypoint (index 0)
-                new GoTo(AIWaypointManager.Instance.Get(0).transform, 1.0f)
+                // 3) Otherwise, gather at the FORWARD waypoint
+                new GoTo(groupPoint, 1.0f)
             });
         }
         else // skeleton
         {
             result = new Selector(new BehaviorTree[] {
-                // If buffed, attack player
+                // Buffed → Attack
                 new Sequence(new BehaviorTree[] {
                     new StrengthFactorQuery(1.5f),
                     new MoveToPlayer(agent.GetAction("attack").range),
                     new Attack()
                 }),
 
-                // Else move to flank position (index 2)
+                // Enough group → Join in
+                new Sequence(new BehaviorTree[] {
+                    new NearbyEnemiesQuery(5, 5.0f),
+                    new MoveToPlayer(agent.GetAction("attack").range),
+                    new Attack()
+                }),
+
+                // Else → Flank
                 new GoTo(AIWaypointManager.Instance.Get(2).transform, 1.0f)
             });
         }
